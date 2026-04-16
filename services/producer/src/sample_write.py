@@ -1,5 +1,6 @@
 import json
-from src.config import SAVE_SAMPLE_PATH
+from pathlib import Path
+from config import SAVE_SAMPLE_PATH
 
 
 class SampleWriter:
@@ -15,6 +16,10 @@ class SampleWriter:
         return len(self.posts) >= self.max_posts
 
     def save(self):
-        with open(SAVE_SAMPLE_PATH, "w", encoding="utf-8") as f:
+        save_path = Path(SAVE_SAMPLE_PATH)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(save_path, "w", encoding="utf-8") as f:
             json.dump(self.posts, f, indent=2, ensure_ascii=False)
-        print(f"Saved {len(self.posts)} posts to {SAVE_SAMPLE_PATH}")
+
+        print(f"Saved {len(self.posts)} posts to {save_path}")

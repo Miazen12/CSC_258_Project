@@ -1,4 +1,4 @@
-from src.config import SOURCE_NAME
+from config import SOURCE_NAME
 
 
 def normalize_post(event: dict):

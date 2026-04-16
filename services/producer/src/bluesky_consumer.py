@@ -1,6 +1,6 @@
 import json
 import websocket
-from src.config import JETSTREAM_URL
+from config import JETSTREAM_URL
 
 
 class BlueskyConsumer:

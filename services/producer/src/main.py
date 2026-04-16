@@ -1,7 +1,7 @@
-from src.bluesky_consumer import BlueskyConsumer
-from src.normalizer import normalize_post
-from src.sample_writer import SampleWriter
-from src.config import MAX_SAMPLE_POSTS
+from bluesky_consumer import BlueskyConsumer
+from normalizer import normalize_post
+from sample_write import SampleWriter
+from config import MAX_SAMPLE_POSTS
 
 
 writer = SampleWriter(max_posts=MAX_SAMPLE_POSTS)
