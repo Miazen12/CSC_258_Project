@@ -28,6 +28,9 @@ BLOCKLIST = {
     "tsubouchi", "tsuruta", "duan", "song", "xu", "li", "yu", "liu"
 }
 
+live_window = deque(maxlen=WINDOW_SIZE)
+
+
 def clean_text(text: str) -> str:
     text = text.lower()
     text = re.sub(r"http\S+", "", text)
@@ -56,9 +59,17 @@ def extract_keywords(text: str) -> list[str]:
             continue
         if re.search(r"\d", word):
             continue
+
         keywords.append(word)
 
     return keywords
+
+
+def extract_terms(text: str) -> list[str]:
+    hashtags = extract_hashtags(text)
+    if hashtags:
+        return hashtags
+    return extract_keywords(text)
 
 
 def load_posts() -> list:
@@ -75,16 +86,26 @@ def get_top_trends(posts: list) -> list[dict]:
 
     for post in posts[-WINDOW_SIZE:]:
         text = clean_text(post.get("text", ""))
-
-        hashtags = extract_hashtags(text)
-        if hashtags:
-            terms = hashtags
-        else:
-            terms = extract_keywords(text)
-
+        terms = extract_terms(text)
         temp_window.append(terms)
 
     all_terms = [word for sublist in temp_window for word in sublist]
+    counter = Counter(all_terms)
+
+    return [
+        {"keyword": word, "count": count}
+        for word, count in counter.most_common(5)
+    ]
+
+
+def add_live_post(text: str) -> None:
+    cleaned = clean_text(text)
+    terms = extract_terms(cleaned)
+    live_window.append(terms)
+
+
+def get_live_trends() -> list[dict]:
+    all_terms = [word for sublist in live_window for word in sublist]
     counter = Counter(all_terms)
 
     return [
@@ -98,7 +119,7 @@ def home():
     return jsonify({
         "service": "trend_service",
         "status": "running",
-        "endpoints": ["/trends"]
+        "endpoints": ["/trends", "/live-trends"]
     })
 
 
@@ -112,15 +133,27 @@ def trends():
             "trends": []
         }), 200
 
-    top_trends = get_top_trends(posts)
-
     return jsonify({
         "message": "Current top trends retrieved successfully from file data.",
         "window_size": WINDOW_SIZE,
         "total_posts_loaded": len(posts),
-        "trends": top_trends
+        "trends": get_top_trends(posts)
+    })
+
+
+@app.route("/live-trends")
+def live_trends():
+    return jsonify({
+        "message": "Current live trends retrieved successfully.",
+        "window_size": WINDOW_SIZE,
+        "trends": get_live_trends()
     })
 
 
 if __name__ == "__main__":
+    # Temporary sample live data for testing
+    add_live_post("earthquake in SF right now #earthquake")
+    add_live_post("NBA finals are crazy #nba")
+    add_live_post("another earthquake reported #earthquake")
+
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
