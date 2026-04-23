@@ -101,6 +101,13 @@ def add_live_post(text: str) -> None:
     live_window.append(terms)
 
 
+def seed_live_window(posts: list) -> None:
+    live_window.clear()
+
+    for post in posts[-WINDOW_SIZE:]:
+        add_live_post(post.get("text", ""))
+
+
 def get_live_trends() -> list[dict]:
     all_terms = [word for sublist in live_window for word in sublist]
     counter = Counter(all_terms)
@@ -145,6 +152,11 @@ def trends():
 
 @app.route("/live-trends")
 def live_trends():
+    if not live_window:
+        posts = load_posts()
+        if posts:
+            seed_live_window(posts)
+
     start = time.perf_counter()
     top_trends = get_live_trends()
     elapsed = time.perf_counter() - start
@@ -152,6 +164,7 @@ def live_trends():
     return jsonify({
         "message": "Current live trends retrieved successfully.",
         "window_size": WINDOW_SIZE,
+        "live_posts_loaded": len(live_window),
         "processing_time_seconds": round(elapsed, 6),
         "trends": top_trends
     })

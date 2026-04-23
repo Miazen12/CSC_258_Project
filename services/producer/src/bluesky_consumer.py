@@ -40,6 +40,9 @@ class BlueskyConsumer:
                 )
 
                 ws.run_forever()
+                if getattr(ws, "stop_requested", False):
+                    print("Sample target reached. Stopping producer.")
+                    break
             except Exception as e:
                 print("Reconnecting in 5 seconds...", e)
                 time.sleep(5)

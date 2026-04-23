@@ -72,10 +72,11 @@ Returns trends from live in-memory data (used for future streaming integration).
 
 ## How to Run
 
-Use Anaconda Python (Flask is installed there):
+Install dependencies and run the service from the project workspace:
 
 ```bash
-D:\Anaconda\python.exe services/trend_service/src/trend_detector.py
+pip install -r services/trend_service/requirements.txt
+python services/trend_service/src/trend_detector.py
 ```
 
 Then open in your browser:

@@ -1,6 +1,18 @@
+import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[3]
+
+def find_base_dir() -> Path:
+    current_file = Path(__file__).resolve()
+
+    for parent in current_file.parents:
+        if (parent / "services").exists() or (parent / "storage").exists():
+            return parent
+
+    return current_file.parents[1]
+
+
+BASE_DIR = Path(os.getenv("PROJECT_ROOT", find_base_dir()))
 
 JETSTREAM_URL = (
     "wss://jetstream1.us-east.bsky.network/subscribe"
@@ -8,5 +20,10 @@ JETSTREAM_URL = (
 )
 
 SOURCE_NAME = "bluesky"
-SAVE_SAMPLE_PATH = BASE_DIR / "storage" / "data" / "sample_post.json"
+SAVE_SAMPLE_PATH = Path(
+    os.getenv(
+        "SAVE_SAMPLE_PATH",
+        str(BASE_DIR / "storage" / "data" / "sample_post.json"),
+    )
+)
 MAX_SAMPLE_POSTS = 10000
