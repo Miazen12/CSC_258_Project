@@ -3,6 +3,7 @@ import re
 import time
 from collections import Counter, deque
 from pathlib import Path
+from threading import Lock
 from flask import Flask, jsonify
 
 app = Flask(__name__)
@@ -30,6 +31,12 @@ BLOCKLIST = {
 }
 
 live_window = deque(maxlen=WINDOW_SIZE)
+trend_cache_lock = Lock()
+trend_cache = {
+    "file_mtime_ns": None,
+    "total_posts_loaded": 0,
+    "top_trends": [],
+}
 
 
 def clean_text(text: str) -> str:
@@ -76,6 +83,35 @@ def load_posts() -> list:
     except Exception as e:
         print(f"Error loading posts: {e}")
         return []
+
+
+def get_cached_trend_data() -> dict:
+    try:
+        file_mtime_ns = FILE_PATH.stat().st_mtime_ns
+    except OSError:
+        return {
+            "total_posts_loaded": 0,
+            "top_trends": [],
+        }
+
+    with trend_cache_lock:
+        if trend_cache["file_mtime_ns"] == file_mtime_ns:
+            return {
+                "total_posts_loaded": trend_cache["total_posts_loaded"],
+                "top_trends": list(trend_cache["top_trends"]),
+            }
+
+        posts = load_posts()
+        top_trends = get_top_trends(posts) if posts else []
+
+        trend_cache["file_mtime_ns"] = file_mtime_ns
+        trend_cache["total_posts_loaded"] = len(posts)
+        trend_cache["top_trends"] = top_trends
+
+        return {
+            "total_posts_loaded": len(posts),
+            "top_trends": list(top_trends),
+        }
 
 
 def get_top_trends(posts: list) -> list[dict]:
@@ -129,24 +165,22 @@ def home():
 
 @app.route("/trends")
 def trends():
-    posts = load_posts()
+    start = time.perf_counter()
+    trend_data = get_cached_trend_data()
+    elapsed = time.perf_counter() - start
 
-    if not posts:
+    if not trend_data["total_posts_loaded"]:
         return jsonify({
             "message": "No data found yet.",
             "trends": []
         }), 200
 
-    start = time.perf_counter()
-    top_trends = get_top_trends(posts)
-    elapsed = time.perf_counter() - start
-
     return jsonify({
         "message": "Current top trends retrieved successfully from file data.",
         "window_size": WINDOW_SIZE,
-        "total_posts_loaded": len(posts),
+        "total_posts_loaded": trend_data["total_posts_loaded"],
         "processing_time_seconds": round(elapsed, 6),
-        "trends": top_trends
+        "trends": trend_data["top_trends"]
     })
 
 
