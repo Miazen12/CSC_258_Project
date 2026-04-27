@@ -3,6 +3,7 @@
 import random
 import re
 from collections import Counter
+from services.processing.config import EXCLUDED_AUTHORS
 from services.storage.logs.unwanted_words import STOPWORDS
 
 URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
@@ -17,6 +18,9 @@ class TrendProcessor:
         self.posts_processed = 0
 
     def process_post(self, post: dict):
+        if post.get("author") in EXCLUDED_AUTHORS:
+            return
+
         text = post.get("text", "")
 
         if not text:

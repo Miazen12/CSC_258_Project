@@ -10,5 +10,7 @@ STOPWORDS = {
     "if", "so", "all", "too", "just", "out", "up", "down", "into", "about",
     "when", "what", "where", "there", "then", "than", "more", "most",
     "also", "through", "current", "currently", "another", "some", "like",
-    "around", "friend", "thanks", "email", "customer", "apologies"
+    "around", "friend", "thanks", "email", "customer", "apologies",
+    "que","hundred","his","people","two","com","don","who","think",
+    "time","would","know","eight","good","him","words","million","her","thousand"
 }

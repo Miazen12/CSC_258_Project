@@ -4,12 +4,12 @@
 
 This project is a real time social media trend detection system. It collects live posts from the website Bluesky and detects trending topics/words.
 
-| Team Member           | Role                                     | Contributions |
-| --------------------- | ---------------------------------------- | ------------- |
-| **Abdurrehman Aslam** | Code Developer and Survey Paper Reviewer |               |
-| **Abubaker Sayyed**   | Survey Paper Writer and Code Reviewer    |               |
-| **Fidel Serrano**     | Code Developer and Survey Paper Reviewer |               |
-| **Soulius Jones**     | Survey Paper Writer and Code Reviewer    |               |
+| Team Member           | Role                                        |
+| --------------------- | ------------------------------------------- |
+| **Abdurrehman Aslam** | Code Developer and Survey Paper Reviewer    |
+| **Abubaker Sayyed**   | Contributed to Survey Paper and Code Review |
+| **Fidel Serrano**     | Code Developer and Survey Paper Reviewer    |
+| **Soulius Jones**     | Survey Paper Writer and Code Reviewer       |
 
 ## Code Structure
 
@@ -78,7 +78,7 @@ Docker is also needed to run the Kafka broker image.
 
 ## How to Run
 
-The following steps and commands were executed at the root level of the project. Since all services executed hear run constiounusly, each command is ran in different terminal windows.
+The following steps and commands were executed at the root level of the project. Since all services executed here run constiounusly, each command is ran in different terminal windows.
 
 1. Build and run Docker container for Kafka broker
 
