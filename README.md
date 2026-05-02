@@ -45,6 +45,18 @@ The project currently supports open design through:
 
 This makes it easier to replace the current file-based handoff with Kafka later without changing the meaning of the payload itself.
 
+## Consistency
+
+The current project supports consistency through a shared normalized data contract and a safer file handoff between services.
+
+- the producer writes normalized posts using the shared schema in `common/post_schema.json`
+- producer saves now use an atomic replace step so readers are less likely to see a partially written JSON file
+- producer output is deduplicated by `post_id` before being saved
+- the trend service validates loaded records and skips malformed entries instead of treating them as valid trend input
+- `/trends` reports `valid_posts_loaded` and `invalid_posts_skipped` so data quality is visible during testing
+
+This does not provide full distributed consistency like a real message broker, but it improves consistency for the current file-based prototype.
+
 ## What Is Done
 - The project is split into separate services, including a `producer` and a `trend_service`
 - The `producer` collects Bluesky post data and normalizes it into a shared internal format
@@ -53,6 +65,7 @@ This makes it easier to replace the current file-based handoff with Kafka later 
 - The project demonstrates separation of concerns, modular service design, and a prototype of distributed-system architecture
 - The system can be run locally and tested through endpoints such as `/trends` and `/live-trends`
 - Cached trend responses improve repeated request performance
+- File-based consistency has been improved through atomic writes, deduplication, and record validation
 
 ## Repository Structure
 ```text

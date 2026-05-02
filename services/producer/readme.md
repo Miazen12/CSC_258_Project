@@ -50,3 +50,11 @@ Output:
 Shared contract:
 
 - `../../common/post_schema.json`
+
+## Consistency Guarantees
+
+The producer now helps maintain a more consistent handoff to downstream services by:
+
+- writing the output through a temporary file and then replacing the main JSON file atomically
+- deduplicating saved posts by `post_id`
+- preserving the normalized field names expected by the shared schema

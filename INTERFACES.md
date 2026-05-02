@@ -29,6 +29,11 @@ Output:
 Shared contract:
 - `common/post_schema.json`
 
+Consistency guarantees:
+- writes replace the JSON file atomically
+- saved posts are deduplicated by `post_id`
+- normalized field names are preserved for downstream readers
+
 Configurable settings:
 - `PROJECT_ROOT`
 - `JETSTREAM_URL`
@@ -64,6 +69,11 @@ Configurable settings:
 - `TREND_SERVICE_HOST`
 - `TREND_SERVICE_PORT`
 - `TREND_SERVICE_DEBUG`
+
+Consistency guarantees:
+- only valid normalized records are used for trend analysis
+- malformed records are skipped rather than treated as valid posts
+- `/trends` exposes data-quality counts in the response
 
 ### Shared Data Contract
 

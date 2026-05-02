@@ -49,6 +49,15 @@ For each post:
 * Uses a **sliding window** of recent posts
 * Counts hashtag frequency
 * Returns the **top trending keywords**
+* Skips malformed stored records instead of treating them as valid input
+
+### Consistency Notes
+
+For the current file-based prototype, consistency is improved by:
+
+* reading only valid normalized records
+* ignoring malformed entries
+* relying on atomic producer writes so the file is less likely to be read mid-write
 
 ---
 
@@ -63,6 +72,12 @@ Returns service status.
 ### `/trends`
 
 Returns top trends based on stored data.
+
+The response also includes:
+
+* `total_posts_loaded`: total records considered after optional source filtering
+* `valid_posts_loaded`: number of records that matched the expected normalized structure
+* `invalid_posts_skipped`: records ignored because they did not match the expected structure
 
 ### `/live-trends`
 

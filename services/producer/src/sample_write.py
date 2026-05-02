@@ -31,10 +31,24 @@ class SampleWriter:
             except (json.JSONDecodeError, OSError):
                 existing_posts = []
 
-        combined_posts = existing_posts + self.posts
+        combined_posts = deduplicate_posts(existing_posts + self.posts)
+        temp_path = save_path.with_suffix(f"{save_path.suffix}.tmp")
 
-        with open(save_path, "w", encoding="utf-8") as f:
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(combined_posts, f, indent=2, ensure_ascii=False)
+
+        temp_path.replace(save_path)
 
         print(f"Saved {len(self.posts)} new posts to {save_path}")
         print(f"Total posts in file: {len(combined_posts)}")
+
+
+def deduplicate_posts(posts: list[dict]) -> list[dict]:
+    deduplicated = {}
+
+    for post in posts:
+        post_id = post.get("post_id")
+        if post_id:
+            deduplicated[post_id] = post
+
+    return list(deduplicated.values())

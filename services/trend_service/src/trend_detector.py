@@ -40,6 +40,8 @@ trend_cache_lock = Lock()
 trend_cache = {
     "file_mtime_ns": None,
     "total_posts_loaded": 0,
+    "valid_posts_loaded": 0,
+    "invalid_posts_skipped": 0,
     "top_trends": [],
 }
 
@@ -96,10 +98,38 @@ def filter_posts(posts: list) -> list:
     ]
 
 
+def is_valid_normalized_post(post: dict) -> bool:
+    if not isinstance(post, dict):
+        return False
+    if not isinstance(post.get("post_id"), str) or not post.get("post_id"):
+        return False
+    if not isinstance(post.get("text"), str) or not post.get("text"):
+        return False
+    if not isinstance(post.get("source"), str) or not post.get("source"):
+        return False
+    if not isinstance(post.get("is_repost"), bool):
+        return False
+    return True
+
+
+def normalize_loaded_posts(posts: list) -> tuple[list, int]:
+    valid_posts = []
+    invalid_posts = 0
+
+    for post in posts:
+        if is_valid_normalized_post(post):
+            valid_posts.append(post)
+        else:
+            invalid_posts += 1
+
+    return valid_posts, invalid_posts
+
+
 def load_posts() -> list:
     try:
         with open(TREND_DATA_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            loaded = json.load(f)
+            return loaded if isinstance(loaded, list) else []
     except Exception as e:
         print(f"Error loading posts: {e}")
         return []
@@ -118,18 +148,25 @@ def get_cached_trend_data() -> dict:
         if trend_cache["file_mtime_ns"] == file_mtime_ns:
             return {
                 "total_posts_loaded": trend_cache["total_posts_loaded"],
+                "valid_posts_loaded": trend_cache["valid_posts_loaded"],
+                "invalid_posts_skipped": trend_cache["invalid_posts_skipped"],
                 "top_trends": list(trend_cache["top_trends"]),
             }
 
-        posts = filter_posts(load_posts())
-        top_trends = get_top_trends(posts) if posts else []
+        all_posts = filter_posts(load_posts())
+        valid_posts, invalid_posts = normalize_loaded_posts(all_posts)
+        top_trends = get_top_trends(valid_posts) if valid_posts else []
 
         trend_cache["file_mtime_ns"] = file_mtime_ns
-        trend_cache["total_posts_loaded"] = len(posts)
+        trend_cache["total_posts_loaded"] = len(all_posts)
+        trend_cache["valid_posts_loaded"] = len(valid_posts)
+        trend_cache["invalid_posts_skipped"] = invalid_posts
         trend_cache["top_trends"] = top_trends
 
         return {
-            "total_posts_loaded": len(posts),
+            "total_posts_loaded": len(all_posts),
+            "valid_posts_loaded": len(valid_posts),
+            "invalid_posts_skipped": invalid_posts,
             "top_trends": list(top_trends),
         }
 
@@ -200,7 +237,7 @@ def trends():
     trend_data = get_cached_trend_data()
     elapsed = time.perf_counter() - start
 
-    if not trend_data["total_posts_loaded"]:
+    if not trend_data["valid_posts_loaded"]:
         return jsonify({
             "message": "No data found yet.",
             "trends": []
@@ -213,6 +250,8 @@ def trends():
         "term_mode": TREND_TERM_MODE,
         "source_filter": TREND_SOURCE_FILTER,
         "total_posts_loaded": trend_data["total_posts_loaded"],
+        "valid_posts_loaded": trend_data["valid_posts_loaded"],
+        "invalid_posts_skipped": trend_data["invalid_posts_skipped"],
         "processing_time_seconds": round(elapsed, 6),
         "trends": trend_data["top_trends"]
     })
@@ -221,7 +260,7 @@ def trends():
 @app.route("/live-trends")
 def live_trends():
     if not live_window and SEED_LIVE_FROM_FILE:
-        posts = filter_posts(load_posts())
+        posts, _ = normalize_loaded_posts(filter_posts(load_posts()))
         if posts:
             seed_live_window(posts)
 
