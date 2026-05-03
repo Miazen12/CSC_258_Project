@@ -54,6 +54,26 @@ Reference file:
 
 ## Run Paths In The Current Repo
 
+### Docker Compose
+
+You can start the main local stack with:
+
+```bash
+docker compose up
+```
+
+This Compose stack starts:
+
+- `broker` on `localhost:9092`
+- `ingestion` as a Python service that publishes posts to Kafka
+- `processing` as a Python service that consumes Kafka posts and writes trend snapshots
+- `dashboard` on `http://localhost:8000/dashboard/index.html`
+
+Notes:
+
+- the dashboard serves the `services/` directory so it can read `storage/logs/*.json`
+- the Python services use `broker:9093` inside Docker, while host tools can still use `localhost:9092`
+
 ### Ingestion service
 Entry point:
 
@@ -113,6 +133,44 @@ The current codebase supports adaptability through:
 - isolated config files per service
 - the ability to switch Jetstream endpoints and Kafka settings from config modules
 - storage and dashboard components that can be changed without rewriting ingestion logic
+
+## Remaining Work By Effort
+
+| Effort | Distributed Component Areas | Work To Do |
+|---|---|---|
+| Low | Open design, Adaptability, Consistency | Keep interface docs aligned with the tracked services, move more settings toward a consistent config pattern, add payload validation tests, and make storage writes safer with atomic file replacement. |
+| Medium | Availability, Scalability | Finish `docker-compose.yml`, add reconnect and retry behavior for Jetstream and Kafka, improve service startup reliability, and reduce unbounded in-memory or file growth in processing and storage. |
+| High | Fault tolerance, Security | Add stronger recovery behavior for crashes and partial failures, improve replay-safe processing and delivery guarantees, protect broker and service configuration, and introduce safer access control and communication between components. |
+
+### Effort Ranking
+1. `Low`: Open design, Adaptability, Consistency
+2. `Medium`: Availability, Scalability
+3. `High`: Fault tolerance, Security
+
+## Project Completion Checklist
+
+### Must Finish
+- [ ] Finish `docker-compose.yml` so the full pipeline can be started more easily
+- [ ] Add a documented dashboard run method
+- [ ] Add a single end-to-end startup flow for broker, ingestion, processing, and dashboard
+- [ ] Decide whether old paths like `services/producer/` and `services/trend_service/` should be removed, archived, or clearly marked as legacy
+- [ ] Keep the top-level docs aligned with the active Kafka-based architecture
+
+### Should Finish
+- [ ] Add reconnect and retry behavior for the Bluesky Jetstream consumer
+- [ ] Add stronger Kafka producer delivery and error handling
+- [ ] Make trend snapshot writes use atomic temp-file replacement
+- [ ] Validate consumed messages before trend processing
+- [ ] Add tests for normalization, processing, and storage output
+- [ ] Improve startup, runtime, and failure logging
+- [ ] Clean tracked logs, generated JSON snapshots, and tracked `__pycache__` files if they are not intended submission artifacts
+
+### Nice To Finish
+- [ ] Improve trend quality and reduce noisy keywords
+- [ ] Limit unbounded in-memory growth in the trend processor
+- [ ] Add rotation or retention rules for stored snapshots
+- [ ] Move more runtime settings toward a clearer environment-based configuration pattern
+- [ ] Add a simple verification script or CI workflow
 
 ## Notes
 - The root README previously described an older `producer` / `trend_service` prototype flow.
