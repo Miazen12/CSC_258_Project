@@ -46,11 +46,13 @@ Main config files:
 - `services/ingestion/config.py`
 - `services/processing/config.py`
 - `services/storage/config.py`
-- `services/trend_service/src/config.py` for the older standalone trend service path
 
 Reference file:
 
 - `.env.example` mirrors the current config values as a documentation template, but it is not auto-loaded by the running services
+- all services also support shared logging level control through `LOG_LEVEL`
+- the ingestion service also supports reconnect tuning through `RECONNECT_DELAY_SECONDS`, `MAX_RECONNECT_DELAY_SECONDS`, and `RECONNECT_BACKOFF_MULTIPLIER`
+- the broker and ingestion path also support Kafka delivery tuning through `KAFKA_ACKS`, `KAFKA_PRODUCER_RETRIES`, `KAFKA_RETRY_BACKOFF_MS`, `KAFKA_REQUEST_TIMEOUT_MS`, `KAFKA_DELIVERY_TIMEOUT_MS`, and `KAFKA_SEND_TIMEOUT_SECONDS`
 
 ## Run Paths In The Current Repo
 
@@ -74,6 +76,21 @@ Notes:
 - the dashboard serves the `services/` directory so it can read `storage/logs/*.json`
 - the Python services use `broker:9093` inside Docker, while host tools can still use `localhost:9092`
 
+Useful commands:
+
+```bash
+docker compose up -d
+docker compose ps
+docker compose logs --tail=50
+docker compose down
+```
+
+Current verification status:
+
+- the Compose stack has been validated with `docker compose config`
+- `broker`, `ingestion`, `processing`, and `dashboard` were all started successfully
+- the dashboard is available at `http://localhost:8000/dashboard/index.html`
+
 ### Ingestion service
 Entry point:
 
@@ -85,6 +102,8 @@ Behavior:
 - consumes Bluesky Jetstream events
 - normalizes valid posts
 - publishes them to Kafka
+- retries Jetstream connections with bounded exponential backoff if the socket drops
+- waits for Kafka send acknowledgements and logs producer delivery failures
 
 ### Processing service
 Entry point:
@@ -95,6 +114,7 @@ python services/processing/main.py
 
 Behavior:
 - consumes normalized posts from Kafka
+- validates consumed messages before processing them
 - computes top trend terms
 - stores trend snapshots and example posts
 
@@ -110,12 +130,26 @@ The dashboard reads:
 - `services/storage/logs/trends.json`
 - `services/storage/logs/example_posts.json`
 
+Local dashboard server:
+
+```bash
+python -m http.server 8000 --directory services
+```
+
+Then open:
+
+```text
+http://localhost:8000/dashboard/index.html
+```
+
 ## Consistency
 The current codebase improves consistency through:
 
 - a normalized post structure produced before Kafka publishing
 - Kafka as the handoff layer between ingestion and processing
 - snapshot files written in a consistent JSON structure by storage helpers
+- atomic temp-file replacement when trend snapshots are saved
+- validation of consumed Kafka payloads before trend processing
 - processing logic that only works from the consumed normalized post payload shape
 
 ## Open Design
@@ -150,20 +184,19 @@ The current codebase supports adaptability through:
 ## Project Completion Checklist
 
 ### Must Finish
-- [ ] Finish `docker-compose.yml` so the full pipeline can be started more easily
-- [ ] Add a documented dashboard run method
-- [ ] Add a single end-to-end startup flow for broker, ingestion, processing, and dashboard
-- [ ] Decide whether old paths like `services/producer/` and `services/trend_service/` should be removed, archived, or clearly marked as legacy
-- [ ] Keep the top-level docs aligned with the active Kafka-based architecture
+- [x] Finish `docker-compose.yml` so the full pipeline can be started more easily
+- [x] Add a documented dashboard run method
+- [x] Add a single end-to-end startup flow for broker, ingestion, processing, and dashboard
+- [x] Keep the top-level docs aligned with the active Kafka-based architecture
 
 ### Should Finish
-- [ ] Add reconnect and retry behavior for the Bluesky Jetstream consumer
-- [ ] Add stronger Kafka producer delivery and error handling
-- [ ] Make trend snapshot writes use atomic temp-file replacement
-- [ ] Validate consumed messages before trend processing
-- [ ] Add tests for normalization, processing, and storage output
-- [ ] Improve startup, runtime, and failure logging
-- [ ] Clean tracked logs, generated JSON snapshots, and tracked `__pycache__` files if they are not intended submission artifacts
+- [x] Add reconnect and retry behavior for the Bluesky Jetstream consumer
+- [x] Add stronger Kafka producer delivery and error handling
+- [x] Make trend snapshot writes use atomic temp-file replacement
+- [x] Validate consumed messages before trend processing
+- [x] Add tests for normalization, processing, and storage output
+- [x] Improve startup, runtime, and failure logging
+- [x] Clean tracked logs, generated JSON snapshots, and tracked `__pycache__` files if they are not intended submission artifacts
 
 ### Nice To Finish
 - [ ] Improve trend quality and reduce noisy keywords
@@ -173,9 +206,8 @@ The current codebase supports adaptability through:
 - [ ] Add a simple verification script or CI workflow
 
 ## Notes
-- The root README previously described an older `producer` / `trend_service` prototype flow.
-- The active tracked code now centers on `ingestion`, `processing`, `storage`, `broker`, and `dashboard`.
-- The `services/trend_service/src/` directory still contains a config file, but the main tracked runtime flow is Kafka-based through `ingestion` and `processing`.
+- The root README and `INTERFACES.md` now describe the active Kafka-based pipeline.
+- The active tracked code centers on `ingestion`, `processing`, `storage`, `broker`, and `dashboard`.
 - `.env.example` is included as a reference sheet for current settings, not as the active runtime configuration source.
 
 ## Files To Know

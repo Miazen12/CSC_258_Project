@@ -16,20 +16,25 @@ class TrendProcessor:
         self.topic_counts = Counter()
         self.topic_examples = {}
         self.posts_processed = 0
+        self.invalid_posts_skipped = 0
 
     def process_post(self, post: dict):
+        if not self._is_valid_post(post):
+            self.invalid_posts_skipped += 1
+            return False
+
         if post.get("author") in EXCLUDED_AUTHORS:
-            return
+            return False
 
         text = post.get("text", "")
 
         if not text:
-            return
+            return False
 
         topics = self._extract_topics(text)
 
         if not topics:
-            return
+            return False
 
         self.topic_counts.update(topics)
 
@@ -47,6 +52,7 @@ class TrendProcessor:
             )
 
         self.posts_processed += 1
+        return True
 
     def top_terms(self, limit=10):
         return self.topic_counts.most_common(limit)
@@ -95,3 +101,26 @@ class TrendProcessor:
             phrases.append(f"{first_word} {second_word}")
 
         return phrases
+
+    def _is_valid_post(self, post):
+        if not isinstance(post, dict):
+            return False
+
+        required_string_fields = ("post_id", "text", "author", "source")
+
+        for field in required_string_fields:
+            value = post.get(field)
+
+            if not isinstance(value, str) or not value.strip():
+                return False
+
+        timestamp = post.get("timestamp")
+        is_repost = post.get("is_repost")
+
+        if timestamp is not None and not isinstance(timestamp, str):
+            return False
+
+        if not isinstance(is_repost, bool):
+            return False
+
+        return True

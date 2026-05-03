@@ -1,6 +1,6 @@
 # Service Interfaces
 
-This document describes the component boundaries that are present in the currently tracked codebase.
+This document describes the component boundaries in the active Kafka-based code path that is currently tracked in the repo.
 
 ## Current Service Flow
 
@@ -18,6 +18,8 @@ Responsibility:
 - consume Bluesky Jetstream events
 - normalize valid posts
 - publish normalized posts to Kafka
+- retry Jetstream connections after disconnects
+- wait for Kafka delivery acknowledgement and surface publish failures
 
 Key files:
 - `main.py`
@@ -32,6 +34,7 @@ Location:
 
 Responsibility:
 - define shared Kafka broker settings such as bootstrap server and topic name
+- define producer delivery settings used by ingestion when publishing posts
 
 Key file:
 - `config.py`
@@ -42,6 +45,7 @@ Location:
 
 Responsibility:
 - consume normalized posts from Kafka
+- validate the normalized Kafka payload shape before processing
 - extract trend terms and phrases
 - build trend snapshots and example posts
 
@@ -89,10 +93,10 @@ Key files:
 
 ## Consistency Notes
 - ingestion normalizes posts before publishing them to Kafka
-- processing assumes the normalized payload shape when extracting terms
+- processing validates and then uses the normalized payload shape when extracting terms
 - storage writes snapshots in a stable JSON structure for dashboard consumption
+- storage saves snapshots with atomic temp-file replacement before swapping them into place
 
 ## Important Repo Note
-- Some older documentation referred to `producer` and `trend_service` as the main active services.
-- The currently tracked implementation is centered on `ingestion`, `processing`, `storage`, `broker`, and `dashboard`.
+- The active tracked implementation is centered on `ingestion`, `processing`, `storage`, `broker`, and `dashboard`.
 - `.env.example` is a documentation aid for these current settings and is not automatically loaded by the services.
