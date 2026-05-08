@@ -1,17 +1,43 @@
+//-----------------------------------------------------
+// Dashboard script for showing live trend snapshots.
+//
+// Reads the latest trend data from the storage API and updates the page.
+//
+//   -- Open Design --
+//   Dashboard only talks to the storage API. It does not know about Kafka,
+//   Bluesky raw events, or database details.
+//
+//   -- Transparency --
+//   Shows status text so users can see if data loaded or if the API failed.
+//
+//   -- Availability --
+//   Refreshes every few seconds so the dashboard keeps updating as new
+//   snapshots are saved.
+//
+//   -- Security --
+//   Escapes user-generated post text before adding it to the HTML.
+//-----------------------------------------------------
+
+// storage API endpoint. Can be changed by setting window.DASHBOARD_API_BASE_URL.
 const API_BASE_URL = window.DASHBOARD_API_BASE_URL || "http://localhost:5001";
 const TREND_DATA_URL = `${API_BASE_URL}/api/latest-trends`;
 const EXAMPLE_POSTS_URL = `${API_BASE_URL}/api/latest-examples`;
+
+// refresh time for the dashboard
 const REFRESH_MS = 5000;
 
+// load the newest trend data from the storage service
 async function loadTrends() {
   const status = document.getElementById("status");
 
   try {
+    // request trends and example posts at the same time
     const [trendResponse, exampleResponse] = await Promise.all([
       fetch(`${TREND_DATA_URL}?t=${Date.now()}`),
       fetch(`${EXAMPLE_POSTS_URL}?t=${Date.now()}`),
     ]);
 
+    // if either API call fails, show it in the dashboard status
     if (!trendResponse.ok) {
       throw new Error(`trends HTTP ${trendResponse.status}`);
     }
@@ -23,6 +49,7 @@ async function loadTrends() {
     const trendPayload = await trendResponse.json();
     const examplePayload = await exampleResponse.json();
 
+    // support both an array of snapshots and a single latest snapshot object
     const latest = latestSnapshotFrom(trendPayload);
     const latestExamples = latestSnapshotFrom(examplePayload);
 
@@ -40,6 +67,7 @@ async function loadTrends() {
   }
 }
 
+// get the newest snapshot from the API response
 function latestSnapshotFrom(payload) {
   if (Array.isArray(payload)) {
     return payload.length > 0 ? payload[payload.length - 1] : null;
@@ -52,6 +80,7 @@ function latestSnapshotFrom(payload) {
   return null;
 }
 
+// render posts processed, last update time, and top trend rows
 function renderSnapshot(snapshot) {
   document.getElementById("postsProcessed").textContent =
     snapshot.posts_processed ?? 0;
@@ -65,10 +94,12 @@ function renderSnapshot(snapshot) {
   const trendList = document.getElementById("trendList");
   trendList.innerHTML = "";
 
+  // build one row per trend term
   trends.forEach((trend, index) => {
     const row = document.createElement("div");
     row.className = "trend-row";
 
+    // scale the bar relative to the top trend count
     const width = Math.max((trend.count / maxCount) * 100, 4);
 
     row.innerHTML = `
@@ -84,15 +115,18 @@ function renderSnapshot(snapshot) {
   });
 }
 
+// render example posts for the top trending terms
 function renderExamples(snapshot) {
   const exampleList = document.getElementById("exampleList");
   exampleList.innerHTML = "";
 
+  // show a clear empty state if no examples have been saved yet
   if (!snapshot || !Array.isArray(snapshot.examples) || snapshot.examples.length === 0) {
     exampleList.innerHTML = `<div class="empty-state">No example posts saved yet.</div>`;
     return;
   }
 
+  // build one card per example post
   for (const item of snapshot.examples) {
     const examplePost = item.example_post || {};
     const card = document.createElement("article");
@@ -114,6 +148,7 @@ function renderExamples(snapshot) {
   }
 }
 
+// convert API timestamps to a local readable time
 function formatTimestamp(timestamp) {
   if (!timestamp) {
     return "Unknown";
@@ -122,6 +157,7 @@ function formatTimestamp(timestamp) {
   return new Date(timestamp).toLocaleTimeString();
 }
 
+// escape user text before inserting it into the page
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -131,5 +167,6 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+// load immediately, then keep refreshing for new snapshots
 loadTrends();
 setInterval(loadTrends, REFRESH_MS);

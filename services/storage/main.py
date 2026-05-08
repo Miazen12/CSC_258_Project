@@ -1,3 +1,24 @@
+#-----------------------------------------------------
+# Main entry for storage service API.
+#
+# Receives processed trend snapshots from processing and stores them in
+# PostgreSQL. Also serves latest trend data to the dashboard.
+#
+#   -- Open Design --
+#   Processing and dashboard talk to this API instead of connecting to the
+#   database directly.
+#
+#   -- Security --
+#   Database credentials stay in the storage service scope.
+#
+#   -- Transparency --
+#   API endpoints make reads and writes visible in storage service logs.
+#
+#   -- Availability --
+#   Dashboard can keep reading latest saved snapshots even if ingestion or
+#   processing temporarily stops.
+#-----------------------------------------------------
+
 from flask import Flask, jsonify, request
 
 from services.logging_utils import get_logger
@@ -10,6 +31,7 @@ app = Flask(__name__)
 store = DatabaseTrendStore()
 
 
+# allow dashboard running from a different port to call this API
 @app.after_request
 def add_cors_headers(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -18,16 +40,19 @@ def add_cors_headers(response):
     return response
 
 
+# dashboard reads latest trend counts from this endpoint
 @app.get("/api/latest-trends")
 def latest_trends():
     return jsonify(store.latest_trends() or [])
 
 
+# dashboard reads latest example posts from this endpoint
 @app.get("/api/latest-examples")
 def latest_examples():
     return jsonify(store.latest_examples() or [])
 
 
+# processing sends trend counts here after each snapshot interval
 @app.post("/api/trend-snapshots")
 def save_trend_snapshot():
     payload = request.get_json(silent=True) or {}
@@ -41,6 +66,7 @@ def save_trend_snapshot():
     return jsonify({"status": "ok"}), 201
 
 
+# processing sends example posts here after each snapshot interval
 @app.post("/api/example-posts")
 def save_example_posts():
     payload = request.get_json(silent=True) or {}
